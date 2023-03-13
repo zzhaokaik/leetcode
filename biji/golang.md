@@ -1,7 +1,7 @@
-golang 基础
-##基础
+golang 基础  
+##基础  
 ##List/Slice  
-操作 
+###操作    
 ```
 // 初始化方式1：直接声明
 var slice1 []int
@@ -12,7 +12,7 @@ slice3 := make([]int, 3, 5)
 // 初始化方式4: 从切片或数组“截取”
 slcie4 := arr[1:3]
 ```
-原理    
+###原理      
 切片是基于数组实现的，它的底层是数组，可以理解为对 底层数组的抽象。
 源码包中src/runtime/slice.go 定义了slice的数据结构：
 ```
@@ -53,7 +53,7 @@ slice 和list 区分
     切片计算长度 o1 // 结构体中存在长度
 
 
-深拷贝浅拷贝
+###深拷贝浅拷贝
 深拷贝：拷贝的是数据本身，创造一个新对象，新创建的对象与原对象不共享内存，新创建的对象在内存中开辟一个新的内存地址，新对象值修改时不会影响原对象值
 实现深拷贝的方式：
 copy(slice2, slice1)
@@ -77,7 +77,7 @@ slice2: [1 2 3 4 5], 0xc0000b0060
 slice3: [1 2 3 4 5], 0xc0000b0090
 ```
 
-扩容  
+###扩容  
 扩容会发生在slice append的时候，当slice的cap不足以容纳新元素，就会进行扩容，扩容规则如下
 
 如果新申请容量比两倍原有容量大，那么扩容后容量大小 为 新申请容量
@@ -90,7 +90,7 @@ slice3: [1 2 3 4 5], 0xc0000b0090
 那么这个对象就是线程安全的。 若有多个线程同时执行写操作，一般都需要考虑线程同步，否则的话就可能影响线程安全。
 再看Go语言实现线程安全常用的几种方式：
 
-互斥锁  
+###互斥锁  
 读写锁  
 原子操作  
 sync.once  
@@ -101,10 +101,9 @@ slice底层结构并没有使用加锁等方式，
 使用多个 goroutine 对类型为 slice 的变量进行操作， 每次输出的值大概率都不会一样，
 与预期值不一致; slice在并发执行中不会报错，但是数据会丢失
 
-/**
 ##Map  
-操作  
-原理  
+  
+###原理  
 Go中的map是一个指针，占用8个字节，指向hmap结构体
 源码包中src/runtime/map.go定义了hmap的数据结构：
 hmap包含若干个结构为bmap的数组，每个bmap底层都采用链表结构，bmap通常叫其bucket
@@ -143,11 +142,11 @@ tophash [bucketCnt]uint8
 // 一个桶最多8个槽位，如果key所在的tophash值在tophash中，则代表该key在这个桶中
 }
 ```
-map 的无序  
+###map 的无序  
 map在遍历时，并不是从固定的0号bucket开始遍历的，每次遍历，都会从一个随机值序号的bucket，再从其中随机的cell开始遍历  
 map遍历时，是按序遍历bucket，同时按需遍历bucket中和其overflow bucket中的cell。但是map在扩容后，会发生key的搬迁，这造成原来落在一个bucket中的key，搬迁后，有可能会落到其他bucket中了，从这个角度看，遍历map的结果就不可能是按照原来的顺序了
 
-非线程安全  
+###非线程安全  
 map默认是并发不安全的，同时对map进行并发读写时，程序会panic，原因如下：  
 Go 官方在经过了长时间的讨论后，认为 Go map 更应适配典型使用场景（不需要从多个 goroutine 中进行安全访问），而不是为了小部分情况（并发访问），导致大部分程序付出加锁代价（性能），决定了不支持。  
 场景: 2个协程同时读和写，以下程序会出现致命错误：fatal error: concurrent map writes  
@@ -328,30 +327,26 @@ v:= add(unsafe.Pointer(b),dataOffset+bucketCnt*uintptr(t.keysize)+i*uintptr(t.va
 ```
 
 
-冲突解决方式  
+###冲突解决方式  
 比较常用的Hash冲突解决方案有链地址法和开放寻址法：
 
-链地址法
+链地址法  
 
-当哈希冲突发生时，创建新单元，并将新单元添加到冲突单元所在链表的尾部。
+当哈希冲突发生时，创建新单元，并将新单元添加到冲突单元所在链表的尾部。  
 
-开放寻址法
+开放寻址法  
 
 当哈希冲突发生时，从发生冲突的那个单元起，按照一定的次序，从哈希表中寻找一个空闲的单元，然后把发生冲突的元素存入到该单元。开放寻址法需要的表长度要大于等于所需要存放的元素数量
-
 开放寻址法有多种方式：线性探测法、平方探测法、随机探测法和双重哈希法。这里以线性探测法来帮助读者理解开放寻址法思想
 
-线性探测法
+线性探测法  
 
 设 Hash(key) 表示关键字 key 的哈希值， 表示哈希表的槽位数（哈希表的大小）。
 
-线性探测法则可以表示为：
-
-如果 Hash(x) % M 已经有数据，则尝试 (Hash(x) + 1) % M ;
-
-如果 (Hash(x) + 1) % M 也有数据了，则尝试 (Hash(x) + 2) % M ;
-
-如果 (Hash(x) + 2) % M 也有数据了，则尝试 (Hash(x) + 3) % M ;
+线性探测法则可以表示为：  
+如果 Hash(x) % M 已经有数据，则尝试 (Hash(x) + 1) % M ;  
+如果 (Hash(x) + 1) % M 也有数据了，则尝试 (Hash(x) + 2) % M ;  
+如果 (Hash(x) + 2) % M 也有数据了，则尝试 (Hash(x) + 3) % M ;  
 
 两种解决方案比较
 
@@ -397,16 +392,21 @@ if inserti == nil {
 
 在向 map 插入新 key 的时候，会进行条件检测，符合下面这 2 个条件，就会触发扩容
 
-if !h.growing() && (overLoadFactor(h.count+1, h.B) || tooManyOverflowBuckets(h.noverflow, h.B)) {
-hashGrow(t, h)
-goto again // Growing the table invalidates everything, so try again
+```
+if !h.growing() && (overLoadFactor(h.count+1, h.B) || 
+tooManyOverflowBuckets(h.noverflow, h.B)) {
+    hashGrow(t, h)
+        goto again // Growing the table invalidates everything, so try again
 }
+```
 
 // 判断是否在扩容
+```
 func (h *hmap) growing() bool {
-return h.oldbuckets != nil
+    return h.oldbuckets != nil
 }
 
+```
 扩容条件：
 
 条件1：超过负载
@@ -552,7 +552,6 @@ func makechan64(t *chantype, size int64) *hchan {
     return makechan(t, int(size))
 }
 ```
-\\
 创建channel 有两种，一种是带缓冲的channel，一种是不带缓冲的channel
 
 ``` 
@@ -562,14 +561,14 @@ ch := make(chan int, 3)
 ch := make(chan int)
 ```
 创建时会做一些检查:
-元素大小不能超过 64K
-元素的对齐大小不能超过 maxAlign 也就是 8 字节
-计算出来的内存是否超过限制
-创建时的策略:
+元素大小不能超过 64K  
+元素的对齐大小不能超过 maxAlign 也就是 8 字节  
+计算出来的内存是否超过限制  
+创建时的策略:  
 
-如果是无缓冲的 channel，会直接给 hchan 分配内存
-如果是有缓冲的 channel，并且元素不包含指针，那么会为 hchan 和底层数组分配一段连续的地址
-如果是有缓冲的 channel，并且元素包含指针，那么会为 hchan 和底层数组分别分配地址
+如果是无缓冲的 channel，会直接给 hchan 分配内存  
+如果是有缓冲的 channel，并且元素不包含指针，那么会为 hchan 和底层数组分配一段连续的地址  
+如果是有缓冲的 channel，并且元素包含指针，那么会为 hchan 和底层数组分别分配地址  
 
 ###发送
 
@@ -622,11 +621,11 @@ v, ok := <ch
 
 ```
 
-// 当channel关闭时，for循环会自动退出，无需主动监测channel是否关闭，
+当channel关闭时，for循环会自动退出，无需主动监测channel是否关闭，
 可以防止读取已经关闭的channel,造成读到数据为通道所存储的数据类型的零值
 ```
 for i := range ch {
-fmt.Println(i)
+    fmt.Println(i)
 }
 ```
 
@@ -645,13 +644,13 @@ select {
 
 向 channel 中接收数据时大概分为两大块，检查和数据发送，而数据接收流程如下：
 
-如果 channel 的写等待队列存在发送者goroutine
-如果是无缓冲 channel，直接从第一个发送者goroutine那里把数据拷贝给接收变量，唤醒发送的 goroutine
-如果是有缓冲 channel（已满），将循环数组buf的队首元素拷贝给接收变量，将第一个发送者goroutine的数据拷贝到 buf循环数组队尾，唤醒发送的 goroutine
-如果 channel 的写等待队列不存在发送者goroutine
-如果循环数组buf非空，将循环数组buf的队首元素拷贝给接收变量
-如果循环数组buf为空，这个时候就会走阻塞接收的流程，将当前 goroutine 加入读等待队列，并挂起等待唤醒
-关闭
+如果 channel 的写等待队列存在发送者goroutine  
+如果是无缓冲 channel，直接从第一个发送者goroutine那里把数据拷贝给接收变量，唤醒发送的 goroutine  
+如果是有缓冲 channel（已满），将循环数组buf的队首元素拷贝给接收变量，将第一个发送者goroutine的数据拷贝到 buf循环数组队尾，唤醒发送的 goroutine  
+如果 channel 的写等待队列不存在发送者goroutine  
+如果循环数组buf非空，将循环数组buf的队首元素拷贝给接收变量  
+如果循环数组buf为空，这个时候就会走阻塞接收的流程，将当前 goroutine 加入读等待队列，并挂起等待唤醒  
+关闭  
 
 关闭操作，调用close函数，编译时转换为runtime.closechan函数
 
@@ -703,10 +702,10 @@ func receiveTask(ch chan string) {
 
 总结hchan结构体的主要组成部分有四个：
 
-用来保存goroutine之间传递数据的循环数组：buf
-用来记录此循环数组当前发送或接收数据的下标值：sendx和recvx
-用于保存向该chan发送和从该chan接收数据被阻塞的goroutine队列： sendq 和 recvq
-保证channel写入和读取数据时线程安全的锁：lock
+用来保存goroutine之间传递数据的循环数组：buf  
+用来记录此循环数组当前发送或接收数据的下标值：sendx和recvx  
+用于保存向该chan发送和从该chan接收数据被阻塞的goroutine队列： sendq 和 recv  
+保证channel写入和读取数据时线程安全的锁：lock  
 ###原理  
 Go中的channel 是一个队列，遵循先进先出的原则，负责协程之间的通信（Go 语言提倡不要通过共享内存来通信，而要通过通信来实现内存共享，CSP(Communicating Sequential Process)并发模型，就是通过 goroutine 和 channel 来实现的）
   
@@ -767,9 +766,9 @@ type sudog struct {
 ##Mutex
 Go sync包提供了两种锁类型：互斥锁sync.Mutex 和 读写互斥锁sync.RWMutex，都属于悲观锁。  
 注意  
-在 Lock() 之前使用 Unlock() 会导致 panic 异常
-使用 Lock() 加锁后，再次 Lock() 会导致死锁（不支持重入），需Unlock()解锁后才能再加锁
-锁定状态与 goroutine 没有关联，一个 goroutine 可以 Lock，另一个 goroutine 可以 Unlock
+在 Lock() 之前使用 Unlock() 会导致 panic 异常  
+使用 Lock() 加锁后，再次 Lock() 会导致死锁（不支持重入），需Unlock()解锁后才能再加锁  
+锁定状态与 goroutine 没有关联，一个 goroutine 可以 Lock，另一个 goroutine 可以 Unlock  
 
 ####概念
 Mutex是互斥锁，当一个 goroutine 获得了锁后，
@@ -858,10 +857,14 @@ func (m *Mutex) Unlock() {
 
 当自旋超过4次还没有能获取到锁的时候，这个G2就会被加入到获取锁的等待队列里面，并阻塞等待唤醒
 
-正常模式下，所有等待锁的 goroutine 按照 FIFO(先进先出)顺序等待。唤醒的goroutine 不会直接拥有锁，而是会和新请求锁的 goroutine 竞争锁。新请求锁的 goroutine 具有优势：它正在 CPU 上执行，而且可能有好几个，所以刚刚唤醒的 goroutine 有很大可能在锁竞争中失败，长时间获取不到锁，就会切换到饥饿模式
+正常模式下，所有等待锁的 goroutine 按照 FIFO(先进先出)顺序等待。  
+唤醒的goroutine 不会直接拥有锁，而是会和新请求锁的 goroutine 竞争锁。新请求锁的 goroutine 具有优势：
+它正在 CPU 上执行，而且可能有好几个，所以刚刚唤醒的 goroutine 有很大可能在锁竞争中失败，长时间获取不到锁，就会切换到饥饿模式  
+
 
 #####饥饿模式(公平锁)
-当一个 goroutine 等待锁时间超过 1 毫秒时，它可能会遇到饥饿问题。 在版本1.9中，这种场景下Go Mutex 切换到饥饿模式（handoff），解决饥饿问题。
+当一个 goroutine 等待锁时间超过 1 毫秒时，它可能会遇到饥饿问题。   
+在版本1.9中，这种场景下Go Mutex 切换到饥饿模式（handoff），解决饥饿问题。
 
 ```starving = runtime_nanotime()-waitStartTime > 1e6```  
 正常模式下，所有等待锁的 goroutine 按照 FIFO(先进先出)顺序等待。
@@ -1214,7 +1217,102 @@ atomic.StoreInt64(addr, newValue)
 fmt.Println("store opts: ", *addr)
 }
 
-##goroutiue
+#goroutiue
+概念
+Goroutine可以理解为一种Go语言的协程（轻量级线程），是Go支持高并发的基础，属于用户态的线程，由Go runtime管理而不是操作系统。
+
+###底层数据结构
+```
+type g struct {
+    goid    int64 // 唯一的goroutine的ID
+    sched gobuf // goroutine切换时，用于保存g的上下文
+    stack stack // 栈
+    gopc        // pc of go statement that created this goroutine
+    startpc    uintptr // pc of goroutine function
+...
+}
+
+type gobuf struct {
+    sp   uintptr // 栈指针位置
+    pc   uintptr // 运行到的程序位置
+    g    guintptr // 指向 goroutine
+    ret  uintptr  // 保存系统调用的返回值
+...
+}
+
+type stack struct {
+    lo uintptr // 栈的下界内存地址
+    hi uintptr // 栈的上界内存地址
+}
+```
+
+最终有一个 runtime.g 对象放入调度队列
+
+#状态流转
+状态	含义
+空闲中_Gidle	G刚刚新建, 仍未初始化  
+待运行_Grunnable	就绪状态，G在运行队列中, 等待M取出并运行  
+运行中_Grunning	M正在运行这个G, 这时候M会拥有一个P  
+系统调用中_Gsyscall	M正在运行这个G发起的系统调用, 这时候M并不拥有P  
+等待中_Gwaiting	G在等待某些条件完成, 这时候G不在运行也不在运行队列中(可能在channel的等待队列中)  
+已中止_Gdead	G未被使用, 可能已执行完毕  
+栈复制中_Gcopystack	G正在获取一个新的栈空间并把原来的内容复制过去(用于防止GC扫描)  
+![img_7.png](img_7.png)
+
+###创建
+通过go关键字调用底层函数runtime.newproc()创建一个goroutine  
+
+当调用该函数之后，goroutine会被设置成runnable状态  
+
+```
+func main() {
+    go func() {
+        fmt.Println("func routine")
+    }()
+        fmt.Println("main goroutine")
+}
+```
+
+创建好的这个goroutine会新建一个自己的栈空间，同时在G的sched中维护栈地址与程序计数器这些信息。
+
+每个 G 在被创建之后，都会被优先放入到本地队列中，如果本地队列已经满了，就会被放入到全局队列中。
+
+###运行
+goroutine 本身只是一个数据结构，真正让 goroutine 运行起来的是调度器。Go 实现了一个用户态的调度器（GMP模型），这个调度器充分利用现代计算机的多核特性，同时让多个 goroutine 运行，同时 goroutine 设计的很轻量级，调度和上下文切换的代价都比较小。
+![img_8.png](img_8.png)
+
+调度时机：
+
+新起一个协程和协程执行完毕  
+会阻塞的系统调用，比如文件io、网络io  
+channel、mutex等阻塞操作  
+time.sleep  
+垃圾回收之后  
+主动调用runtime.Gosched()  
+运行过久或系统调用过久等等  
+每个 M 开始执行 P 的本地队列中的 G时，goroutine会被设置成running状态  
+
+如果某个 M 把本地队列中的G都执行完成之后，然后就会去全局队列中拿 G，这里需要注意，每次去全局队列拿 G 的时候，都需要上锁，避免同样的任务被多次拿。
+
+如果全局队列都被拿完了，而当前 M 也没有更多的 G 可以执行的时候，它就会去其他 P 的本地队列中拿任务，这个机制被称之为 work stealing 机制，每次会拿走一半的任务，向下取整，比如另一个 P 中有 3 个任务，那一半就是一个任务。
+
+当全局队列为空，M 也没办法从其他的 P 中拿任务的时候，就会让自身进入自选状态，等待有新的 G 进来。最多只会有 GOMAXPROCS 个 M 在自旋状态，过多 M 的自旋会浪费 CPU 资源。
+
+###阻塞
+channel的读写操作、等待锁、等待网络数据、系统调用等都有可能发生阻塞，会调用底层函数runtime.gopark()，会让出CPU时间片，让调度器安排其它等待的任务运行，并在下次某个时候从该位置恢复执行。
+
+当调用该函数之后，goroutine会被设置成waiting状态
+
+###唤醒
+处于waiting状态的goroutine，在调用runtime.goready()函数之后会被唤醒，唤醒的goroutine会被重新放到M对应的上下文P对应的runqueue中，等待被调度。
+
+当调用该函数之后，goroutine会被设置成runnable状态
+
+###退出
+当goroutine执行完成后，会调用底层函数runtime.Goexit()
+
+当调用该函数之后，goroutine会被设置成dead状态
+
 
 
 ##GC
