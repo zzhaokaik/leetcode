@@ -1312,9 +1312,315 @@ channel的读写操作、等待锁、等待网络数据、系统调用等都有�
 当goroutine执行完成后，会调用底层函数runtime.Goexit()
 
 当调用该函数之后，goroutine会被设置成dead状态
+###Go goroutine和线程的区别
+```                       	                                            
+内存占用	
+    goroutine 创建一个 goroutine 的栈内存消耗为 2 KB，实际运行过程中，如果栈空间不够用，会自动进行扩容	
+    线程 创建一个 线程 的栈内存消耗为 1 MB
+创建和销毀	
+    goroutine 因为是由 Go runtime 负责管理的，创建和销毁的消耗非常小，是用户级。	
+    线程 创建和销毀都会有巨大的消耗，因为要和操作系统打交道，是内核级的，通常解决的办法就是线程池
+切换	
+    goroutines 切换只需保存三个寄存器：PC、SP、BP
+    goroutine 的切换约为 200 ns，相当于 2400-3600 条指令。	
+    当线程切换时，需要保存各种寄存器，以便恢复现场。
+    线程切换会消耗 1000-1500 ns，相当于 12000-18000 条指令。
+```
+
+###排查内存泄漏
+###泄露原因
+Goroutine 内进行channel/mutex 等读写操作被一直阻塞。  
+Goroutine 内的业务逻辑进入死循环，资源一直无法释放。  
+Goroutine 内的业务逻辑进入长时间等待，有不断新增的 Goroutine 进入等待 
+####泄露场景
+如果输出的 goroutines 数量是在不断增加的，就说明存在泄漏  
+nil channel
+channel 如果忘记初始化，那么无论你是读，还是写操作，都会造成阻塞。  
+
+``` 
+func main() {
+    fmt.Println("before goroutines: ", runtime.NumGoroutine())
+    block1()
+    time.Sleep(time.Second * 1)
+    fmt.Println("after goroutines: ", runtime.NumGoroutine())
+}
+
+func block1() {
+    var ch chan int
+    for i := 0; i < 10; i++ {
+        go func() {
+            <-ch
+        }()
+    }
+}
+```
+输出结果：
+```
+before goroutines:  1
+after goroutines:  11
+```
+
+
+发送不接收
+
+channel 发送数量 超过 channel接收数量，就会造成阻塞
+
+```
+func block2() {
+    ch := make(chan int)
+    for i := 0; i < 10; i++ {
+        go func() {
+            ch <- 1
+        }()
+    }
+}
+```
+
+接收不发送
+
+channel 接收数量 超过 channel发送数量，也会造成阻塞
+
+``` 
+func block3() {
+    ch := make(chan int)
+    for i := 0; i < 10; i++ {
+        go func() {
+            <-ch
+        }()
+    }
+}
+```
+
+http request body未关闭
+
+resp.Body.Close() 未被调用时，goroutine不会退出
+
+``` 
+func requestWithNoClose() {
+    _, err := http.Get("https://www.baidu.com")
+        if err != nil {
+            fmt.Println("error occurred while fetching page, error: %s", err.Error())
+        }
+}
+
+
+func requestWithClose() {
+    resp, err := http.Get("https://www.baidu.com")
+    if err != nil {
+        fmt.Println("error occurred while fetching page, error: %s", err.Error())
+        return
+    }
+    defer resp.Body.Close()
+}
 
 
 
+func block4() {
+    for i := 0; i < 10; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+                requestWithNoClose()
+            }()
+        }
+}
+
+var wg = sync.WaitGroup{}
+
+func main() {
+    block4()
+    wg.Wait()
+}
+```
+
+
+
+
+
+一般发起http请求时，需要确保关闭body
+
+```
+defer resp.Body.Close()
+```
+
+互斥锁忘记解锁
+
+第一个协程获取 sync.Mutex 加锁了，但是他可能在处理业务逻辑，又或是忘记 Unlock 了。
+
+因此导致后面的协程想加锁，却因锁未释放被阻塞了
+
+```
+func block5() {
+    var mutex sync.Mutex
+    for i := 0; i < 10; i++ {
+        go func() {
+            mutex.Lock()
+        }()
+    }
+    }
+```
+
+
+sync.WaitGroup使用不当
+
+由于 wg.Add 的数量与 wg.Done 数量并不匹配，因此在调用 wg.Wait 方法后一直阻塞等待
+
+``` 
+func block6() {
+    var wg sync.WaitGroup
+    for i := 0; i < 10; i++ {
+        go func() {
+            wg.Add(2)
+            wg.Done()
+            wg.Wait()
+        }()
+    }
+}
+```
+
+####如何排查
+单个函数：调用 runtime.NumGoroutine 方法来打印 执行代码前后Goroutine 的运行数量，进行前后比较，就能知道有没有泄露了。
+
+###生产/测试环境：使用PProf实时监测Goroutine的数量
+
+####程序中引入pprof pakage
+在程序中引入pprof package：
+
+```import _ "net/http/pprof"```
+
+程序中开启HTTP监听服务：
+
+```
+package main
+
+import (
+"net/http"
+_ "net/http/pprof"
+)
+
+
+func main() {
+
+    for i := 0; i < 100; i++ {
+        go func() {
+            select {}
+        }()
+    }
+
+    go func() {
+        http.ListenAndServe("localhost:6060", nil)
+    }()
+
+    select {}
+}
+```
+
+
+
+#分析goroutine文件
+在命令行下执行：
+
+```
+go tool pprof -http=:1248 http://127.0.0.1:6060/debug/pprof/goroutine
+```
+
+会自动打开浏览器页面如下图所示
+
+
+
+
+###用什么方法控制goroutine并发的数量？
+有缓冲channel
+
+利用缓冲满时发送阻塞的特性
+``` 
+
+package main
+
+import (
+"fmt"
+"runtime"
+"time"
+)
+
+var wg = sync.WaitGroup{}
+
+func main() {
+    // 模拟用户请求数量
+    requestCount := 10
+    fmt.Println("goroutine_num", runtime.NumGoroutine())
+    // 管道长度即最大并发数
+    ch := make(chan bool, 3)
+    for i := 0; i < requestCount; i++ {
+        wg.Add(1)
+        ch <- true
+        go Read(ch, i)
+    }
+
+     wg.Wait()
+}
+
+func Read(ch chan bool, i int) {
+        fmt.Printf("goroutine_num: %d, go func: %d\n", runtime.NumGoroutine(), i)
+        <-ch
+        wg.Done()
+}
+```
+复制代码
+输出结果：默认最多不超过3（4-1）个goroutine并发执行
+
+```goroutine_num 1
+goroutine_num: 4, go func: 1
+goroutine_num: 4, go func: 3
+goroutine_num: 4, go func: 2
+goroutine_num: 4, go func: 0
+goroutine_num: 4, go func: 4
+goroutine_num: 4, go func: 5
+goroutine_num: 4, go func: 6
+goroutine_num: 4, go func: 8
+goroutine_num: 4, go func: 9
+goroutine_num: 4, go func: 7
+```
+
+无缓冲channel
+
+任务发送和执行分离，指定消费者并发协程数
+
+```
+package main
+
+import (
+"fmt"
+"runtime"
+"sync"
+)
+
+var wg = sync.WaitGroup{}
+
+func main() {
+// 模拟用户请求数量
+    requestCount := 10
+    fmt.Println("goroutine_num", runtime.NumGoroutine())
+    ch := make(chan bool)
+    for i := 0; i < 3; i++ {
+        go Read(ch, i)
+    }
+
+    for i := 0; i < requestCount; i++ {
+        wg.Add(1)
+        ch <- true
+    }
+
+    wg.Wait()
+}
+
+func Read(ch chan bool, i int) {
+    for _ = range ch {
+        fmt.Printf("goroutine_num: %d, go func: %d\n", runtime.NumGoroutine(), i)
+        wg.Done()
+    }
+}
+```
 ##GC
 简介
 ```

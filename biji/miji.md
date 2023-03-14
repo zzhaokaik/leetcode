@@ -143,9 +143,9 @@ func A(listA []int, target int) []int {
 
 ```
 
-`前缀`和模板
-
-```go
+前缀和模板
+注意还有前缀亦或和 前缀余（同余公式）
+```
 package test
 
 func A(listA []int) int {
