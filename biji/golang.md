@@ -1566,7 +1566,7 @@ func Read(ch chan bool, i int) {
         wg.Done()
 }
 ```
-复制代码
+
 输出结果：默认最多不超过3（4-1）个goroutine并发执行
 
 ```goroutine_num 1
