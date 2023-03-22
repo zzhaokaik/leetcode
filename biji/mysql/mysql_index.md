@@ -149,3 +149,61 @@ COUNT(*): 16049
 对于中到大型的表，索引就非常有效；
 
 但是对于特大型的表，建立和维护索引的代价将会随之增长。这种情况下，需要用到一种技术可以直接区分出需要查询的一组数据，而不是一条记录一条记录地匹配，例如可以使用分区技术。
+
+
+###索引失效场景
+####1不满足最左匹配原则
+```
+索引 code,type,name
+查询条件 name,code 
+select * from table where name= and code=
+
+如果改成select name,code form table where name=and code=
+则走索引
+```
+####2 使用select * 不走索引
+``` 
+索引 code,type,name
+select * from table 不走
+
+select code,type,name 走索引
+```
+
+####3.order by 导致索引失效
+``` 
+索引 code type name
+select code,type,name,rank from table where  order b code
+ranks 不在索引列去掉则走
+因为要回表找ranks
+优化方式，手动回表
+```
+####4.索引列计算、函数导致不走索引
+####5 字段类型不同
+
+``` 
+code varchar
+select * from table where code=101 
+注意隐式转换 “1”-》1
+
+```
+####6 like 左侧包括 %
+
+###7 列对比
+``` 
+索引 code type name
+select * where id=rank
+select rank where id=rank 走索引（覆盖索引）
+```
+
+####8 使用or
+``` 
+select * from where code=1or rank=2 5.7 不走 8.0走
+8.0 or 两边都要有索引
+```
+
+####9 <>= 导致索引失效
+``` 
+select * from where code<>1 5.7 不走 8.0走
+8.0 or 两边都要有索引
+```
+####10 数据量过多导致不走索引
