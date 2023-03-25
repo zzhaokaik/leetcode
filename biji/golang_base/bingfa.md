@@ -397,3 +397,146 @@ func main() {
 }
 
 ```
+
+
+###Go WaitGroup实现原理
+Go标准库提供了WaitGroup原语, 可以用它来等待一批 Goroutine 结束
+``` 
+// A WaitGroup must not be copied after first use.
+type WaitGroup struct {
+ noCopy noCopy
+ state1 [3]uint32
+}
+
+其中 noCopy 是 golang 源码中检测禁止拷贝的技术。如果程序中有 WaitGroup 的赋值行为，使用 go vet 检查程序时，就会发现有报错。但需要注意的是，noCopy 不会影响程序正常的编译和运行。
+
+state1主要是存储着状态和信号量，状态维护了 2 个计数器，一个是请求计数器counter ，另外一个是等待计数器waiter（已调用 WaitGroup.Wait 的 goroutine 的个数）
+
+当数组的首地址是处于一个8字节对齐的位置上时，那么就将这个数组的前8个字节作为64位值使用表示状态，后4个字节作为32位值表示信号量(semaphore)；同理如果首地址没有处于8字节对齐的位置上时，那么就将前4个字节作为semaphore，后8个字节作为64位数值。
+```
+
+
+![img_3.png](img_3.png)
+
+####使用方法
+``` 
+在WaitGroup里主要有3个方法：
+
+WaitGroup.Add()：可以添加或减少请求的goroutine数量，Add(n) 将会导致 counter += n
+WaitGroup.Done()：相当于Add(-1)，Done() 将导致 counter -=1，请求计数器counter为0 时通过信号量调用runtime_Semrelease唤醒waiter线程
+WaitGroup.Wait()：会将 waiter++，同时通过信号量调用 runtime_Semacquire(semap)阻塞当前 goroutine
+
+func main() {
+    var wg sync.WaitGroup
+    for i := 1; i <= 5; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            println("hello")
+        }()
+    }
+
+    wg.Wait()
+}
+
+```
+
+###Go Cond实现原理
+Go标准库提供了Cond原语，可以让 Goroutine 在满足特定条件时被阻塞和唤醒
+
+#### 底层数据结构
+``` 
+type Cond struct {
+    noCopy noCopy
+
+    // L is held while observing or changing the condition
+    L Locker
+
+    notify  notifyList
+    checker copyChecker
+}
+
+type notifyList struct {
+    wait   uint32
+    notify uint32
+    lock   uintptr // key field of the mutex
+    head   unsafe.Pointer
+    tail   unsafe.Pointer
+}
+
+
+
+主要有4个字段：
+
+nocopy ： golang 源码中检测禁止拷贝的技术。如果程序中有 WaitGroup 的赋值行为，使用 go vet 检查程序时，就会发现有报错，但需要注意的是，noCopy 不会影响程序正常的编译和运行
+checker：用于禁止运行期间发生拷贝，双重检查(Double check)
+L：可以传入一个读写锁或互斥锁，当修改条件或者调用Wait方法时需要加锁
+notify：通知链表，调用Wait()方法的Goroutine会放到这个链表中，从这里获取需被唤醒的Goroutine列表
+```
+
+####使用方法
+``` 
+在Cond里主要有3个方法：
+
+sync.NewCond(l Locker): 新建一个 sync.Cond 变量，注意该函数需要一个 Locker 作为必填参数，这是因为在 cond.Wait() 中底层会涉及到 Locker 的锁操作
+
+Cond.Wait(): 阻塞等待被唤醒，调用Wait函数前需要先加锁；并且由于Wait函数被唤醒时存在虚假唤醒等情况，导致唤醒后发现，条件依旧不成立，因此需要使用 for 语句来循环地进行等待，直到条件成立为止
+
+Cond.Signal(): 只唤醒一个最先 Wait 的 goroutine，可以不用加锁
+
+Cond.Broadcast(): 唤醒所有Wait的goroutine，可以不用加锁
+
+package main
+
+import (
+    "fmt"
+    "sync"
+    "sync/atomic"
+    "time"
+)
+
+var status int64
+
+func main() {
+    c := sync.NewCond(&sync.Mutex{})
+    for i := 0; i < 10; i++ {
+        go listen(c)
+    }
+    go broadcast(c)
+    time.Sleep(1 * time.Second)
+}
+
+func broadcast(c *sync.Cond) {
+    // 原子操作
+    atomic.StoreInt64(&status, 1) 
+    c.Broadcast()
+}
+
+func listen(c *sync.Cond) {
+    c.L.Lock()
+    for atomic.LoadInt64(&status) != 1 {
+        c.Wait() 
+        // Wait 内部会先调用 c.L.Unlock()，来先释放锁，如果调用方不先加锁的话，会报错
+    }
+    fmt.Println("listen")
+    c.L.Unlock()
+}
+
+
+```
+
+
+
+###读取共享内存
+```   
+
+方法	                        并发原语	      备注
+不要修改变量	               sync.Once	不要去写变量，变量只初始化一次
+
+只允许一个goroutine访问变量	Channel	     不要通过共享变量来通信，通过通信(channel)来共享变量
+
+允许多个goroutine访问变量，
+但是同一时间只允许一个
+goroutine访问	           sync.Mutex、sync.RWMutex、原子操作	实现锁机制，同时只有一个线程能拿到锁
+
+```
