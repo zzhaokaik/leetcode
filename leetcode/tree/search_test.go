@@ -81,8 +81,8 @@ func findqianqu(root *TreeNode,Val int)*TreeNode{
 	//   2      5
 	// 1    3
 
-	//1 无前驱   1
-	// 前驱为parent 3
+	//1 无前驱 val=  1
+	// 前驱为parent val=3
 	//总结找parent 且node 不是parent的左节点
 	parent:=searchPearent(root,node.Val)
 	for parent!=nil && parent.Left==node{
