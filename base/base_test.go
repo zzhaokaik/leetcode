@@ -76,3 +76,7 @@ func TestCopy(t *testing.T){
 //	slice3: [1 2 3 4 5], 0xc0000b0090
 
 }
+
+func TestAA(t *testing.T){
+	main1()
+}

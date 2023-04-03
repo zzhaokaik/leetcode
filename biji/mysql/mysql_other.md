@@ -1,5 +1,5 @@
 #mysql 杂
-##左右链接 join
+##  左右链接 join
 查询分析器中执行：
 ```
 --建表table1,table2：
@@ -119,7 +119,7 @@ A:select * from table1,table2
 
 
 
-###解释 SQL 的 left join 和 right join
+###    解释 SQL 的 left join 和 right join
 ```
 left join 和 right join 都是两个表进行 merge 的操作，left join 是将右边的表 merge 到左边，right join 是将左边的表 merge 到右边，通常我们会指定按照哪几列进行 merge
 
@@ -151,7 +151,7 @@ SZ1716030	小明	2
 ```
 
 
-###事务的隔离级别
+###    事务的隔离级别
 ``` 
 Mysql有四种事务隔离级别,默认的是可重复读.
 

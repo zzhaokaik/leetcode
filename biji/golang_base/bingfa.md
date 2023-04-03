@@ -1,17 +1,17 @@
 #GOland 并发模型
 
-###线程间通信方式
+###    线程间通信方式
 线程间存在两种通讯方式  
 1.共享内存  
 2.消息传递  
 同时通过内存获取数据
 
-###共享内存
+###    共享内存
 抽象层级：抽象层级低。对资源进行细粒度或对性能有高要求使用
 耦合：高
 线程竞争：需要加锁
 
-###发送消息
+###    发送消息
 抽象层级：高，提供封装和耦合设计（channel）
 耦合：低
 线程竞争：同一时间只有1个线程访问
@@ -20,17 +20,17 @@ goland 2种并发模型
 1.共享内存模型
 2.csp模型
 
-###共享内存模型
+###    共享内存模型
 ![img.png](img.png)
 
-###CSP并发模型
+###    CSP并发模型
 通过发送消息的方式来同步信息，Go语言推荐使用的通信顺序进程（communicating sequential processes）并发模型，通过goroutine和channel来实现
 
 goroutine 是Go语言中并发的执行单位，可以理解为”线程“
 channel是Go语言中各个并发结构体(goroutine)之前的通信机制。 通俗的讲，就是各个goroutine之间通信的”管道“，类似于Linux中的管道
 ![img_1.png](img_1.png)
-##Go 有哪些并发同步原语
-###原子操作
+##  Go 有哪些并发同步原语
+###    原子操作
 Mutex、RWMutex 等并发原语的底层实现是通过 atomic 包中的一些原子操作来实现的，原子操作是最基础的并发原语
 ![img_2.png](img_2.png)
 ``` 
@@ -79,7 +79,7 @@ func store(addr *int64, newValue int64) {
 
 ```
 
-###Channel
+###    Channel
 channel 管道，高级同步原语，goroutine之间通信的桥梁
 
 使用场景：消息队列、数据传递、信号通知、任务编排、锁
@@ -108,12 +108,12 @@ func main() {
 
 ```
 
-###基本并发原语
+###    基本并发原语
 Go 语言在 sync包中提供了用于同步的一些基本原语，这些基本原语提供了较为基础的同步功能，但是它们是一种相对原始的同步机制，在多数情况下，我们都应该使用抽象层级更高的 Channel 实现同步。
 
 常见的并发原语如下：sync.Mutex、sync.RWMutex、sync.WaitGroup、sync.Cond、sync.Once、sync.Pool、sync.Context
 
-####sync.Mutex
+####   sync.Mutex
 sync.Mutex （互斥锁） 可以限制对临界资源的访问，保证只有一个 goroutine 访问共享资源
 
 使用场景：大量读写，比如多个 goroutine 并发更新同一个资源，像计数器
@@ -163,7 +163,7 @@ func (c *Counter) Count() uint64 {
 }
 ```
 
-####sync.RWMutex
+####   sync.RWMutex
 sync.RWMutex （读写锁） 可以限制对临界资源的访问，保证只有一个 goroutine 写共享资源，可以有多个goroutine 读共享资源
 
 使用场景：大量并发读，少量并发写，有强烈的性能要求
@@ -216,7 +216,7 @@ func (c *Counter) Count() uint64 {
 
 ```
 
-####sync.WaitGroup
+####   sync.WaitGroup
 sync.WaitGroup 可以等待一组 Goroutine 的返回
 
 使用场景：并发等待，任务编排，一个比较常见的使用场景是批量发出 RPC 或者 HTTP 请求
@@ -236,7 +236,7 @@ wg.Wait()
 
 ```
 
-####sync.Cond
+####   sync.Cond
 sync.Cond 可以让一组的 Goroutine 都在满足特定条件时被唤醒
 
 使用场景：利用等待 / 通知机制实现阻塞或者唤醒
@@ -279,7 +279,7 @@ func listen(c *sync.Cond) {
 }
 ```
 
-####sync.Once
+####   sync.Once
 sync.Once 可以保证在 Go 程序运行期间的某段代码只会执行一次
 
 使用场景：常常用于单例对象的初始化场景
@@ -301,7 +301,7 @@ func main() {
 }
 ```
 
-####sync.Pool
+####   sync.Pool
 sync.Pool可以将暂时将不用的对象缓存起来，待下次需要的时候直接使用，不用再次经过内存分配，复用对象的内存，减轻 GC 的压力，提升系统的性能（频繁地分配、回收内存会给 GC 带来一定的负担，严重的时候会引起 CPU 的毛刺）
 
 使用场景：对象池化， TCP连接池、数据库连接池、Worker Pool
@@ -329,7 +329,7 @@ func main() {
 
 ```
 
-####sync.Map
+####   sync.Map
 sync.Map 线程安全的map
 
 使用场景：map 并发读写
@@ -361,7 +361,7 @@ func main() {
 
 ```
 
-####sync.Context
+####   sync.Context
 sync.Context 可以进行上下文信息传递、提供超时和取消机制、控制子 goroutine 的执行
 
 使用场景：取消一个goroutine的执行
@@ -399,7 +399,7 @@ func main() {
 ```
 
 
-###Go WaitGroup实现原理
+###    Go WaitGroup实现原理
 Go标准库提供了WaitGroup原语, 可以用它来等待一批 Goroutine 结束
 ``` 
 // A WaitGroup must not be copied after first use.
@@ -418,7 +418,7 @@ state1主要是存储着状态和信号量，状态维护了 2 个计数器，�
 
 ![img_3.png](img_3.png)
 
-####使用方法
+####   使用方法
 ``` 
 在WaitGroup里主要有3个方法：
 
@@ -441,10 +441,10 @@ func main() {
 
 ```
 
-###Go Cond实现原理
+###    Go Cond实现原理
 Go标准库提供了Cond原语，可以让 Goroutine 在满足特定条件时被阻塞和唤醒
 
-#### 底层数据结构
+####    底层数据结构
 ``` 
 type Cond struct {
     noCopy noCopy
@@ -474,7 +474,7 @@ L：可以传入一个读写锁或互斥锁，当修改条件或者调用Wait方
 notify：通知链表，调用Wait()方法的Goroutine会放到这个链表中，从这里获取需被唤醒的Goroutine列表
 ```
 
-####使用方法
+####   使用方法
 ``` 
 在Cond里主要有3个方法：
 
@@ -527,7 +527,7 @@ func listen(c *sync.Cond) {
 
 
 
-###读取共享内存
+###    读取共享内存
 ```   
 
 方法	                        并发原语	      备注
