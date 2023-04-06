@@ -11,7 +11,7 @@ package tree
 // 左右都不为nil 返回root 说明左右各有pq 则一定是公共父节点 返回root pq 在不同分支
 
 
-
+//由于 从底层向上递归，return p/q 一定能保证最深
 func lowestCommonAncestor(root, p, q *TreeNode) *TreeNode {
 	if root==nil || root==p || root==q{
 		return root
