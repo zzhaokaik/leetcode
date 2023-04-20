@@ -5,6 +5,33 @@ type TreeNode struct {
     Left *TreeNode
     Right *TreeNode
 }
+func bfs(root *TreeNode)[][]int{
+	queue:=make([]*TreeNode,0)
+	queue=append(queue,root)
+	res:=make([][]int,0)
+	for len(queue)!=0{
+
+		size:=len(queue)
+
+		tmp:=make([]int,0)
+		for i:=0;i<size;i++{
+			node:=queue[0]
+			queue=queue[1:]
+			tmp=append(tmp,node.Val)
+			if node.Left!=nil{
+				queue=append(queue,node.Left)
+			}
+			if node.Right!=nil{
+				queue=append(queue,node.Right)
+			}
+		}
+
+		res=append(res,tmp)
+
+	}
+	return res
+}
+
 
 // 二叉树的前序遍历
 // 根在前
