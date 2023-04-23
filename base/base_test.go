@@ -3,7 +3,9 @@ package base
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestPanic(t *testing.T){
@@ -79,4 +81,68 @@ func TestCopy(t *testing.T){
 
 func TestAA(t *testing.T){
 	main1()
+}
+
+
+var mutxa sync.Mutex
+var mutxb sync.Mutex
+//死锁1
+func main2(){
+
+	//mutxa.Lock()
+	//mutxb.Lock()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		mutxa.Lock()
+		time.Sleep(time.Second)
+		fmt.Println("a")
+		mutxb.Lock()
+		wg.Done()
+
+	}()
+
+	go func() {
+		mutxb.Lock()
+		time.Sleep(time.Second)
+		fmt.Println("b")
+		mutxa.Lock()
+		wg.Done()
+	}()
+
+	wg.Wait()
+	fmt.Println("ccc")
+
+}
+
+
+func TestSisuo(t *testing.T){
+
+	main2()
+}
+
+
+func main3(){
+	ch:=make(chan int)
+	ch<-1
+	a:= <- ch
+	fmt.Println(a)
+
+
+}
+
+
+func main4(){
+	ch:=make(chan int)
+	ch<-1
+	go func(){
+		a:=<-ch
+		fmt.Println(a)
+	}()
+
+
+
+}
+func TestSiSuo2(t *testing.T){
+	main3()
 }
