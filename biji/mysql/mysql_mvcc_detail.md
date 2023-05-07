@@ -1,4 +1,12 @@
 ##  MVCC
+
+``` 
+MVCC（Multi-Version Concurrency Control）多版本并发控制，
+MVCC 是一种并发控制的方法，一般在数据库管理系统中，实现对数据库的并发访问， 它在不同的数据库引擎中有不同的实现。
+MySQL中MVCC只能在Repeatable Read（读可重复读）、Read Committed（读可提交）这两个隔离级别下工作。
+用途： MVCC实现的是普通读取不加锁，并且读写不冲突，根据28定律，通常大部分为读操作，避免了读操作的加锁可以大大提高性能。
+```
+
 ##  锁介绍
 数据库并发控制——锁, Multiversion (version) concurrency control (MCC or MVCC) 多版本并发控制 ，它是数据库管理系统一种常见的并发控制。
 
@@ -56,6 +64,8 @@ true/false	事务id	回滚指针	id	name	password
 
 ###    Mvcc
 MVCC多版本并发控制是MySQL中基于乐观锁理论实现隔离级别的方式，用于读已提交和可重复读取隔离级别的实现。 在MySQL中，会在表中每一条数据后面添加两个字段,最近修改该行数据的事务ID，指向该行（undolog表中）回滚段的指针。 Read View判断行的可见性，创建一个新事务时，copy一份当前系统中的活跃事务列表。意思是，当前不应该被本事务看到的其他事务id列表。
+
+
 
 ```
 UndoLog
